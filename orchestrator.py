@@ -1,143 +1,147 @@
 #!/usr/bin/env python3
-import argparse, os, json, subprocess, time, textwrap
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import argparse
+import os
+import subprocess
+import json
+import time
+import concurrent.futures
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Orchestrate container-based GPU benchmarks for multiple images and workloads"
+    )
+    parser.add_argument(
+        "--images", nargs='+', required=True,
+        help="List of Docker images to test (e.g. python:3.10-slim ubuntu:22.04 alpine:3.14)"
+    )
+    parser.add_argument(
+        "--iterations", type=int, default=3,
+        help="Number of iterations per workload per image"
+    )
+    parser.add_argument(
+        "--max-workers", type=int, default=1,
+        help="Max parallel containers to run"
+    )
+    parser.add_argument(
+        "--outdir", type=str, default="reports",
+        help="Directory to write JSON reports"
+    )
+    return parser.parse_args()
+
 
 def get_gpu_metrics():
+    """
+    Attempt to query NVIDIA GPUs for utilization, memory, power, temperature.
+    Returns an empty list if nvidia-smi is unavailable or no GPUs are present.
+    """
     cmd = [
         "nvidia-smi",
-        "--query-gpu=index,utilization.gpu,utilization.memory,"
-        "memory.used,memory.total,power.draw,temperature.gpu",
+        "--query-gpu=index,name,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw,temperature.gpu",
         "--format=csv,noheader,nounits"
     ]
     try:
-        out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
-        lines = out.decode().strip().splitlines()
-        metrics = []
-        for line in lines:
-            idx, util, mem_util, used, total, power, temp = [x.strip() for x in line.split(',')]
-            metrics.append({
-                "index": int(idx),
-                "utilization_gpu_pct": int(util),
-                "utilization_mem_pct": int(mem_util),
-                "memory_used_mib": int(used),
-                "memory_total_mib": int(total),
-                "power_draw_w": float(power),
-                "temperature_c": int(temp),
-            })
-        return metrics
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode('utf-8').strip().splitlines()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        # nvidia-smi not found or no GPUs available
         return []
 
-def run_workload(image, workload, iteration, outdir, cwd):
-    # 1) ensure image
-    subprocess.run(["docker", "pull", image], check=True, stdout=subprocess.DEVNULL)
+    metrics = []
+    for line in output:
+        idx, name, util_gpu, util_mem, mem_used, mem_total, power, temp = [x.strip() for x in line.split(',')]
+        metrics.append({
+            "index": int(idx),
+            "name": name,
+            "utilization_gpu": float(util_gpu),
+            "utilization_memory": float(util_mem),
+            "memory_used": float(mem_used),
+            "memory_total": float(mem_total),
+            "power_draw_watts": float(power),
+            "temperature_c": float(temp),
+        })
+    return metrics
 
-    # 2) snapshot GPU before
-    pre = get_gpu_metrics()
 
-    # 3) build & run
+def run_container(image, workload, command, outdir, iteration):
+    # Ensure image is available
+    subprocess.run(["docker", "pull", image], check=True)
+
+    # Record metrics before
+    pre_metrics = get_gpu_metrics()
+    start_ts = time.time()
+
+    # Build docker run command
     docker_cmd = [
-        "docker", "run", "--rm", "--gpus", "all",
-        "-v", f"{cwd}:/app", "-w", "/app",
-        image, "sh", "-c", workload["cmd"]
+        "docker", "run", "--rm", "-v", f"{os.getcwd()}:/app", "-w", "/app"
     ]
-    start = time.time()
-    try:
-        subprocess.run(docker_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        success = True
-    except subprocess.CalledProcessError as e:
-        success = False
-        print(f"⚠️  [{image}][{workload['name']}] iter {iteration} failed:", e)
-    duration = time.time() - start
+    # Add GPU flag if available on host
+    if pre_metrics:
+        docker_cmd.extend(["--gpus", "all"]);
+    docker_cmd.extend([image, "/bin/bash", "-c", command])
 
-    # 4) snapshot GPU after
-    post = get_gpu_metrics()
+    # Run the workload inside a container
+    subprocess.run(docker_cmd, check=True)
+    duration = time.time() - start_ts
 
-    # 5) write report
+    # Record metrics after
+    post_metrics = get_gpu_metrics()
+
+    # Compose result
     result = {
         "image": image,
-        "workload": workload["name"],
+        "workload": workload,
         "iteration": iteration,
-        "duration_s": duration,
-        "success": success,
-        "gpu_pre": pre,
-        "gpu_post": post
+        "duration_seconds": duration,
+        "pre_metrics": pre_metrics,
+        "post_metrics": post_metrics
     }
-    safe = image.replace("/", "_").replace(":", "_")
-    rpt = os.path.join(outdir, f"{safe}_{workload['name']}_iter{iteration}.json")
-    with open(rpt, "w") as f:
+
+    # Write to JSON
+    safe_name = image.replace('/', '_').replace(':', '_')
+    fname = f"{safe_name}__{workload}__iter{iteration}.json"
+    with open(os.path.join(outdir, fname), 'w') as f:
         json.dump(result, f, indent=2)
     return result
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--images", nargs="+", required=True)
-    parser.add_argument("--iterations", type=int, default=3)
-    parser.add_argument("--max-workers", type=int, default=4)
-    parser.add_argument("--outdir", required=True)
-    args = parser.parse_args()
 
-    cwd = os.getcwd()
+def main():
+    args = parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
-    # --- generate helper scripts in ./runpod_scripts/ ---
-    scripts_dir = os.path.join(cwd, "runpod_scripts")
-    os.makedirs(scripts_dir, exist_ok=True)
+    # Define sample GPU-intensive workloads
+    workloads = {
+        "gpu_stress": "python gpu_stress_test.py",
+        "tf_inference": "python tf_inference_test.py",
+        "llm_inference": "python llm_inference_test.py --model gpt2"
+    }
 
-    matrix_py = textwrap.dedent("""\
-        import torch
-        a = torch.randn((4096, 4096), device='cuda')
-        b = torch.randn((4096, 4096), device='cuda')
-        for _ in range(10):
-            torch.mm(a, b)
-    """)
-    with open(os.path.join(scripts_dir, "matrix_stress.py"), "w") as f:
-        f.write(matrix_py)
+    tasks = []
+    for image in args.images:
+        for workload, cmd in workloads.items():
+            for i in range(1, args.iterations + 1):
+                tasks.append((image, workload, cmd, i))
 
-    gpt2_py = textwrap.dedent("""\
-        from transformers import GPT2LMHeadModel, GPT2Tokenizer
-        import torch
-        tok = GPT2Tokenizer.from_pretrained('gpt2')
-        model = GPT2LMHeadModel.from_pretrained('gpt2').cuda()
-        inputs = tok('Hello world', return_tensors='pt').to('cuda')
-        with torch.no_grad():
-            model.generate(**inputs, max_length=50)
-    """)
-    with open(os.path.join(scripts_dir, "gpt2_inference.py"), "w") as f:
-        f.write(gpt2_py)
-
-    # --- define workloads as simple one‐liners ---
-    workloads = [
-        {
-            "name": "gpu_matrix_stress",
-            "cmd": "pip install --no-cache-dir torch torchvision && python3 runpod_scripts/matrix_stress.py"
-        },
-        {
-            "name": "tf_inference",
-            "cmd": "pip install --no-cache-dir tensorflow && python3 tf_inference_test.py"
-        },
-        {
-            "name": "gpt2_inference",
-            "cmd": "pip install --no-cache-dir transformers torch && python3 runpod_scripts/gpt2_inference.py"
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as executor:
+        future_to_task = {
+            executor.submit(run_container, img, wl, cmd, args.outdir, itr): (img, wl, itr)
+            for img, wl, cmd, itr in tasks
         }
-    ]
+        for future in concurrent.futures.as_completed(future_to_task):
+            img, wl, itr = future_to_task[future]
+            try:
+                res = future.result()
+                results.append(res)
+                print(f"✓ {img} [{wl}] iter {itr}: {res['duration_seconds']:.2f}s")
+            except subprocess.CalledProcessError as e:
+                print(f"✗ {img} [{wl}] iter {itr} failed: {e}")
 
-    # --- run them in parallel ---
-    all_results = []
-    with ThreadPoolExecutor(max_workers=args.max_workers) as exe:
-        futures = []
-        for img in args.images:
-            for wl in workloads:
-                for i in range(1, args.iterations+1):
-                    futures.append(
-                        exe.submit(run_workload, img, wl, i, args.outdir, cwd)
-                    )
-        for f in as_completed(futures):
-            all_results.append(f.result())
+    # Write overall summary
+    summary_path = os.path.join(args.outdir, "summary.json")
+    with open(summary_path, 'w') as f:
+        json.dump(results, f, indent=2)
+    print(f"Benchmark complete. Reports in '{args.outdir}'")
 
-    # --- summary.json ---
-    with open(os.path.join(args.outdir, "summary.json"), "w") as f:
-        json.dump(all_results, f, indent=2)
 
 if __name__ == "__main__":
     main()
