@@ -1,0 +1,13 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*.so
+
+# Docker artifacts
+*.log
+*.pid
+
+# Environment
+.env
+.idea/
+.vscode/
