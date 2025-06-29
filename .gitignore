@@ -1,13 +1,21 @@
-# Byte-compiled / optimized
-__pycache__/
-*.py[cod]
-*.so
+diff --git a/.gitignore b/.gitignore
+index e69de29..abcdef0 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,6 +1,9 @@
+ # Byte-compiled / optimized
+ __pycache__/
+ *.py[cod]
++*.so
 
-# Docker artifacts
-*.log
-*.pid
+ # Docker artifacts
+ *.log
++*.pid
 
-# Environment
-.env
-.idea/
-.vscode/
+ # Environment
+ .env
++.dockerignore
++
++# Generated reports
++metrics.json
++report.html
