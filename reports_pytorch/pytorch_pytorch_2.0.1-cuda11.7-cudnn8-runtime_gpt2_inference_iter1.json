@@ -1,0 +1,9 @@
+{
+  "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+  "workload": "gpt2_inference",
+  "iteration": 1,
+  "duration_s": 0.17565536499023438,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

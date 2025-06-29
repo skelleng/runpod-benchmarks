@@ -1,0 +1,9 @@
+{
+  "image": "frolvlad/alpine-bash:latest",
+  "workload": "gpu_matrix_stress",
+  "iteration": 3,
+  "duration_s": 0.06420302391052246,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

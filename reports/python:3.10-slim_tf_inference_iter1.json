@@ -1,0 +1,9 @@
+{
+  "image": "python:3.10-slim",
+  "workload": "tf_inference",
+  "iteration": 1,
+  "duration_s": 0.23914432525634766,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

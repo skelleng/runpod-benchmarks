@@ -1,0 +1,11 @@
+# ignore Python cache
+__pycache__/
+*.py[cod]
+
+# git metadata
+.git
+.gitignore
+
+# local config
+.env
+.vscode/

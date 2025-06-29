@@ -1,0 +1,9 @@
+{
+  "image": "nvidia/cuda:11.7.1-base-ubuntu22.04",
+  "workload": "gpt2_inference",
+  "iteration": 1,
+  "duration_s": 0.15931487083435059,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

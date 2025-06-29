@@ -1,0 +1,9 @@
+{
+  "image": "python:3.10-slim",
+  "workload": "gpt2_inference",
+  "iteration": 1,
+  "duration_s": 0.16730713844299316,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

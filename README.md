@@ -1,36 +1,37 @@
-# RunPod Benchmark Suite
+diff --git a/README.md b/README.md
+index abcdef0..1234567 100644
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,12 @@
+ # RunPod Benchmark Suite
+[![Runpod](https://api.runpod.io/badge/skelleng/runpod-benchmarks)](https://console.runpod.io/hub/skelleng/runpod-benchmarks)
+-**Purpose:**  
+-Benchmark the most-used RunPod Docker images across common workloads (CPU, memory, I/O, network, TF inference) and recommend the best image per use case.
++**Purpose:**  
++1. Spin up a set of Docker images against a suite of workloads  
++2. Collect CPU, memory, and runtime stats  
++3. **Generate** a lightweight HTML report (and JSON)  
++4. **Optionally** push metrics to InfluxDB / Grafana
 
-**Purpose:**  
-Benchmark the most-used RunPod Docker images across common workloads (CPU, memory, I/O, network, TF inference) and recommend the best image per use case.
++**Quick report view:**  
++After running, open `report.html` in your browser for a summary table.
 
-## Components
+ ## Components
 
-1. **orchestrator.py**  
-   - Discovers images & workloads  
-   - Runs them in parallel  
-   - Scrapes Docker stats  
-   - Pushes data to InfluxDB
+@@ -13,7 +19,7 @@ 4. **Dashboard**  
 
-2. **Workloads** (`workloads/`)  
-   - `cpu_test.sh`, `memory_test.sh`, `io_test.sh`, `network_test.sh`, `tf_inference_test.py`
+ ## Quickstart
 
-3. **Metrics Backend**  
-   - Docker-Compose brings up InfluxDB & Grafana
+-```bash
++```bash
+ # Build & run metrics stack (optional)
+ docker-compose up -d
 
-4. **Dashboard**  
-   - Import `grafana/dashboards/runpod_bench.json` into Grafana
+@@ -21,14 +27,18 @@ docker-compose up -d
 
-## Quickstart
-
-```bash
-# Build & run metrics stack
-docker-compose up -d
-
-# Install Python deps
-pip install -r requirements.txt
-
-# Run benchmarks & push to InfluxDB
-python orchestrator.py
-
-# Grafana UI → import dashboard (http://localhost:3000)
-```
+ # Run benchmarks, push to InfluxDB, and generate HTML report
+ python orchestrator.py
++
++# View the HTML report (opens in your default browser)
++python -m http.server 8000
++# then point your browser at http://localhost:8000/report.html

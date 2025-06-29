@@ -1,0 +1,83 @@
+[
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 3,
+    "duration_s": 0.18317580223083496,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 1,
+    "duration_s": 0.21639013290405273,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 1,
+    "duration_s": 0.23647046089172363,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 2,
+    "duration_s": 0.202500581741333,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 2,
+    "duration_s": 0.08322286605834961,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 3,
+    "duration_s": 0.17265701293945312,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 2,
+    "duration_s": 0.17339468002319336,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 1,
+    "duration_s": 0.17565536499023438,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 3,
+    "duration_s": 0.06854724884033203,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  }
+]

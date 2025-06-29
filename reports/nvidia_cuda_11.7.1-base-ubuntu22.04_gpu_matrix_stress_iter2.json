@@ -1,0 +1,9 @@
+{
+  "image": "nvidia/cuda:11.7.1-base-ubuntu22.04",
+  "workload": "gpu_matrix_stress",
+  "iteration": 2,
+  "duration_s": 0.1958606243133545,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

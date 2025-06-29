@@ -1,0 +1,9 @@
+{
+  "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+  "workload": "gpu_matrix_stress",
+  "iteration": 1,
+  "duration_s": 0.2730681896209717,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

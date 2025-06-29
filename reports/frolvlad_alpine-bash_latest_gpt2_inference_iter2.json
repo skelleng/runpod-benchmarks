@@ -1,0 +1,9 @@
+{
+  "image": "frolvlad/alpine-bash:latest",
+  "workload": "gpt2_inference",
+  "iteration": 2,
+  "duration_s": 0.11942434310913086,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

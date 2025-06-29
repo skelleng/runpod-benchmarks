@@ -1,0 +1,9 @@
+{
+  "image": "ubuntu:22.04",
+  "workload": "tf_inference",
+  "iteration": 2,
+  "duration_s": 0.09697508811950684,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

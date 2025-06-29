@@ -1,0 +1,9 @@
+{
+  "image": "ubuntu:22.04",
+  "workload": "gpu_matrix_stress",
+  "iteration": 3,
+  "duration_s": 0.11069393157958984,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

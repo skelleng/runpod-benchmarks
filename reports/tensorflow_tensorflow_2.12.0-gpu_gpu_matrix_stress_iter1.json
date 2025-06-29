@@ -1,0 +1,9 @@
+{
+  "image": "tensorflow/tensorflow:2.12.0-gpu",
+  "workload": "gpu_matrix_stress",
+  "iteration": 1,
+  "duration_s": 0.13551020622253418,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

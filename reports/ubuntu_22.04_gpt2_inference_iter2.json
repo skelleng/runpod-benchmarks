@@ -1,0 +1,9 @@
+{
+  "image": "ubuntu:22.04",
+  "workload": "gpt2_inference",
+  "iteration": 2,
+  "duration_s": 0.062081098556518555,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

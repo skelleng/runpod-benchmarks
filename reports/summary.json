@@ -1,0 +1,164 @@
+[
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 2,
+    "duration_s": 0.23052573204040527,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 3,
+    "duration_s": 0.2191758155822754,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpu_matrix_stress",
+    "iteration": 1,
+    "duration_s": 0.2730681896209717,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 1,
+    "duration_s": 0.28426551818847656,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 2,
+    "duration_s": 0.13547825813293457,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "tf_inference",
+    "iteration": 3,
+    "duration_s": 0.15654778480529785,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 1,
+    "duration_s": 0.1445298194885254,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 2,
+    "duration_s": 0.1622457504272461,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime",
+    "workload": "gpt2_inference",
+    "iteration": 3,
+    "duration_s": 0.11089634895324707,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpu_matrix_stress",
+    "iteration": 1,
+    "duration_s": 0.13551020622253418,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpu_matrix_stress",
+    "iteration": 2,
+    "duration_s": 0.1912851333618164,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpu_matrix_stress",
+    "iteration": 3,
+    "duration_s": 0.1610119342803955,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "tf_inference",
+    "iteration": 1,
+    "duration_s": 0.09264302253723145,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "tf_inference",
+    "iteration": 2,
+    "duration_s": 0.11519217491149902,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "tf_inference",
+    "iteration": 3,
+    "duration_s": 0.11712193489074707,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpt2_inference",
+    "iteration": 1,
+    "duration_s": 0.14938879013061523,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpt2_inference",
+    "iteration": 2,
+    "duration_s": 0.09770417213439941,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  },
+  {
+    "image": "tensorflow/tensorflow:2.12.0-gpu",
+    "workload": "gpt2_inference",
+    "iteration": 3,
+    "duration_s": 0.08747172355651855,
+    "success": false,
+    "gpu_pre": [],
+    "gpu_post": []
+  }
+]

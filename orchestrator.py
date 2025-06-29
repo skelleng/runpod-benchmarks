@@ -1,186 +1,143 @@
 #!/usr/bin/env python3
-import os
-import time
-import json
-import statistics
-import docker
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+import argparse, os, json, subprocess, time, textwrap
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ───── CONFIGURATION ──────────────────────────────────────────────────────────
-INFLUX_URL    = os.getenv("INFLUX_URL",   "http://localhost:8086")
-INFLUX_TOKEN  = os.getenv("INFLUX_TOKEN", "admin:adminpass")
-INFLUX_ORG    = os.getenv("INFLUX_ORG",   "runpod")
-INFLUX_BUCKET = os.getenv("INFLUX_BUCKET","runpod_bench")
-
-WORKLOADS_DIR = os.getenv("WORKLOADS_DIR","./workloads")
-IMAGES        = os.getenv("IMAGES", "python:3.10-slim").split(",")
-MAX_WORKERS   = int(os.getenv("MAX_WORKERS", "0")) or None
-# ──────────────────────────────────────────────────────────────────────────────
-
-docker_client = docker.from_env()
-influx_client = InfluxDBClient(
-    url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG
-)
-write_api = influx_client.write_api(write_options=SYNCHRONOUS)
-
-def run_workload(image, script_path, iterations=3, timeout=120):
+def get_gpu_metrics():
+    cmd = [
+        "nvidia-smi",
+        "--query-gpu=index,utilization.gpu,utilization.memory,"
+        "memory.used,memory.total,power.draw,temperature.gpu",
+        "--format=csv,noheader,nounits"
+    ]
     try:
-        docker_client.images.pull(image)
-    except Exception as e:
-        print(f"⚠️ Skipping {image}: could not pull – {e}")
+        out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
+        lines = out.decode().strip().splitlines()
+        metrics = []
+        for line in lines:
+            idx, util, mem_util, used, total, power, temp = [x.strip() for x in line.split(',')]
+            metrics.append({
+                "index": int(idx),
+                "utilization_gpu_pct": int(util),
+                "utilization_mem_pct": int(mem_util),
+                "memory_used_mib": int(used),
+                "memory_total_mib": int(total),
+                "power_draw_w": float(power),
+                "temperature_c": int(temp),
+            })
+        return metrics
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return []
 
-    script_name = os.path.basename(script_path)
-    metrics = []
+def run_workload(image, workload, iteration, outdir, cwd):
+    # 1) ensure image
+    subprocess.run(["docker", "pull", image], check=True, stdout=subprocess.DEVNULL)
 
-    for i in range(1, iterations + 1):
-        container = None
-        try:
-            print(f"[{image}][{script_name}] Iteration {i}/{iterations}")
-            container = docker_client.containers.run(
-                image,
-                command=["/bin/bash", "-c", f"./{script_name}"],
-                volumes={os.path.abspath(WORKLOADS_DIR): {'bind':'/workloads','mode':'ro'}},
-                working_dir="/workloads",
-                detach=True,
-            )
+    # 2) snapshot GPU before
+    pre = get_gpu_metrics()
 
-            t0 = time.time()
-            stats = container.stats(stream=False)
-            exit_info = container.wait(timeout=timeout)
-            t1 = time.time()
-
-            # CPU delta
-            cpu_total     = stats.get("cpu_stats", {}) \
-                                  .get("cpu_usage", {}) \
-                                  .get("total_usage", 0)
-            precpu_total  = stats.get("precpu_stats", {}) \
-                                  .get("cpu_usage", {}) \
-                                  .get("total_usage", 0)
-            cpu_delta     = cpu_total - precpu_total
-
-            # System CPU delta
-            sys_total     = stats.get("cpu_stats", {}) \
-                                  .get("system_cpu_usage", 0)
-            precpu_sys    = stats.get("precpu_stats", {}) \
-                                  .get("system_cpu_usage", 0)
-            sys_delta     = sys_total - precpu_sys
-
-            percpu       = stats.get("cpu_stats", {}) \
-                                 .get("cpu_usage", {}) \
-                                 .get("percpu_usage") or []
-            cpu_count    = len(percpu)
-            cpu_percent  = (cpu_delta/sys_delta)*cpu_count*100 if sys_delta else 0.0
-
-            # Memory
-            mem_usage    = stats.get("memory_stats", {}) \
-                                 .get("usage", 0)
-            mem_limit    = stats.get("memory_stats", {}) \
-                                 .get("limit", 0)
-            mem_percent  = (mem_usage/mem_limit)*100 if mem_limit else 0.0
-
-            metrics.append({
-                "image": image,
-                "workload": script_name,
-                "iteration": i,
-                "runtime_s": t1 - t0,
-                "cpu_percent": cpu_percent,
-                "mem_percent": mem_percent,
-                "mem_usage_bytes": mem_usage,
-                "status": exit_info.get("StatusCode"),
-                "timestamp": int(time.time()*1e9),
-            })
-
-        except Exception as e:
-            print(f"❌ Error in {image}/{script_name} iter {i}: {e}")
-        finally:
-            if container:
-                try: container.remove(force=True)
-                except: pass
-
-    return metrics
-
-def push_to_influx(points):
-    for p in points:
-        pt = (
-            Point("runpod_bench")
-            .tag("image", p["image"])
-            .tag("workload", p["workload"])
-            .field("runtime_s", p["runtime_s"])
-            .field("cpu_percent", p["cpu_percent"])
-            .field("mem_percent", p["mem_percent"])
-            .field("mem_usage_bytes", p["mem_usage_bytes"])
-            .time(p["timestamp"])
-        )
-        write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=pt)
-
-def generate_html_report(metrics, filename="report.html"):
-    # Group metrics by (image, workload)
-    summary = {}
-    for m in metrics:
-        key = (m["image"], m["workload"])
-        summary.setdefault(key, {"runtime": [], "cpu": [], "mem": []})
-        summary[key]["runtime"].append(m["runtime_s"])
-        summary[key]["cpu"].append(m["cpu_percent"])
-        summary[key]["mem"].append(m["mem_percent"])
-
-    rows = []
-    for (img, wl), data in summary.items():
-        avg_rt  = statistics.mean(data["runtime"])
-        avg_cpu = statistics.mean(data["cpu"])
-        avg_mem = statistics.mean(data["mem"])
-        rows.append((img, wl, avg_rt, avg_cpu, avg_mem))
-    # Sort for readability
-    rows.sort(key=lambda r: (r[0], r[1]))
-
-    # Build HTML
-    html = [
-        "<!DOCTYPE html>",
-        "<html><head><meta charset='utf-8'><title>RunPod Bench Report</title></head><body>",
-        "<h1>RunPod Benchmark Summary</h1>",
-        "<table border='1' cellpadding='5' cellspacing='0'>",
-        "<tr><th>Image</th><th>Workload</th><th>Avg Runtime (s)</th><th>Avg CPU (%)</th><th>Avg Mem (%)</th></tr>",
+    # 3) build & run
+    docker_cmd = [
+        "docker", "run", "--rm", "--gpus", "all",
+        "-v", f"{cwd}:/app", "-w", "/app",
+        image, "sh", "-c", workload["cmd"]
     ]
-    for img, wl, rt, cpu, mem in rows:
-        html.append(f"<tr><td>{img}</td><td>{wl}</td>"
-                    f"<td>{rt:.3f}</td><td>{cpu:.1f}</td><td>{mem:.1f}</td></tr>")
-    html += ["</table></body></html>"]
+    start = time.time()
+    try:
+        subprocess.run(docker_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        success = True
+    except subprocess.CalledProcessError as e:
+        success = False
+        print(f"⚠️  [{image}][{workload['name']}] iter {iteration} failed:", e)
+    duration = time.time() - start
 
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write("\n".join(html))
-    print(f"📄 Report written to {filename}")
+    # 4) snapshot GPU after
+    post = get_gpu_metrics()
+
+    # 5) write report
+    result = {
+        "image": image,
+        "workload": workload["name"],
+        "iteration": iteration,
+        "duration_s": duration,
+        "success": success,
+        "gpu_pre": pre,
+        "gpu_post": post
+    }
+    safe = image.replace("/", "_").replace(":", "_")
+    rpt = os.path.join(outdir, f"{safe}_{workload['name']}_iter{iteration}.json")
+    with open(rpt, "w") as f:
+        json.dump(result, f, indent=2)
+    return result
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--images", nargs="+", required=True)
+    parser.add_argument("--iterations", type=int, default=3)
+    parser.add_argument("--max-workers", type=int, default=4)
+    parser.add_argument("--outdir", required=True)
+    args = parser.parse_args()
+
+    cwd = os.getcwd()
+    os.makedirs(args.outdir, exist_ok=True)
+
+    # --- generate helper scripts in ./runpod_scripts/ ---
+    scripts_dir = os.path.join(cwd, "runpod_scripts")
+    os.makedirs(scripts_dir, exist_ok=True)
+
+    matrix_py = textwrap.dedent("""\
+        import torch
+        a = torch.randn((4096, 4096), device='cuda')
+        b = torch.randn((4096, 4096), device='cuda')
+        for _ in range(10):
+            torch.mm(a, b)
+    """)
+    with open(os.path.join(scripts_dir, "matrix_stress.py"), "w") as f:
+        f.write(matrix_py)
+
+    gpt2_py = textwrap.dedent("""\
+        from transformers import GPT2LMHeadModel, GPT2Tokenizer
+        import torch
+        tok = GPT2Tokenizer.from_pretrained('gpt2')
+        model = GPT2LMHeadModel.from_pretrained('gpt2').cuda()
+        inputs = tok('Hello world', return_tensors='pt').to('cuda')
+        with torch.no_grad():
+            model.generate(**inputs, max_length=50)
+    """)
+    with open(os.path.join(scripts_dir, "gpt2_inference.py"), "w") as f:
+        f.write(gpt2_py)
+
+    # --- define workloads as simple one‐liners ---
+    workloads = [
+        {
+            "name": "gpu_matrix_stress",
+            "cmd": "pip install --no-cache-dir torch torchvision && python3 runpod_scripts/matrix_stress.py"
+        },
+        {
+            "name": "tf_inference",
+            "cmd": "pip install --no-cache-dir tensorflow && python3 tf_inference_test.py"
+        },
+        {
+            "name": "gpt2_inference",
+            "cmd": "pip install --no-cache-dir transformers torch && python3 runpod_scripts/gpt2_inference.py"
+        }
+    ]
+
+    # --- run them in parallel ---
+    all_results = []
+    with ThreadPoolExecutor(max_workers=args.max_workers) as exe:
+        futures = []
+        for img in args.images:
+            for wl in workloads:
+                for i in range(1, args.iterations+1):
+                    futures.append(
+                        exe.submit(run_workload, img, wl, i, args.outdir, cwd)
+                    )
+        for f in as_completed(futures):
+            all_results.append(f.result())
+
+    # --- summary.json ---
+    with open(os.path.join(args.outdir, "summary.json"), "w") as f:
+        json.dump(all_results, f, indent=2)
 
 if __name__ == "__main__":
-    # discover scripts
-    scripts = [
-        os.path.join(WORKLOADS_DIR, f)
-        for f in os.listdir(WORKLOADS_DIR)
-        if os.path.isfile(os.path.join(WORKLOADS_DIR, f))
-    ]
-
-    all_metrics = []
-    # benchmark in parallel
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as exe:
-        futures = [
-            exe.submit(run_workload, img, scr)
-            for img in IMAGES for scr in scripts
-        ]
-        for fut in as_completed(futures):
-            try:
-                all_metrics.extend(fut.result())
-            except Exception as e:
-                print(f"❌ Error collecting results: {e}")
-
-    # push to InfluxDB (optional)
-    if INFLUX_BUCKET:
-        print(f"Pushing {len(all_metrics)} metrics to InfluxDB…")
-        push_to_influx(all_metrics)
-
-    # dump raw data & generate HTML
-    with open("metrics.json", "w", encoding="utf-8") as jf:
-        json.dump(all_metrics, jf, indent=2)
-    print("🔢 metrics.json written.")
-
-    generate_html_report(all_metrics)
+    main()

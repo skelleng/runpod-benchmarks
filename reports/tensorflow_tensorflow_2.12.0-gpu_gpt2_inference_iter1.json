@@ -1,0 +1,9 @@
+{
+  "image": "tensorflow/tensorflow:2.12.0-gpu",
+  "workload": "gpt2_inference",
+  "iteration": 1,
+  "duration_s": 0.14938879013061523,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

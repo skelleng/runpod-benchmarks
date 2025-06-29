@@ -1,0 +1,9 @@
+{
+  "image": "python:3.10-slim",
+  "workload": "gpu_matrix_stress",
+  "iteration": 1,
+  "duration_s": 0.2530403137207031,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}

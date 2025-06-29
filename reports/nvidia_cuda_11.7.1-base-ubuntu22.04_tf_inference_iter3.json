@@ -1,0 +1,9 @@
+{
+  "image": "nvidia/cuda:11.7.1-base-ubuntu22.04",
+  "workload": "tf_inference",
+  "iteration": 3,
+  "duration_s": 0.14914345741271973,
+  "success": false,
+  "gpu_pre": [],
+  "gpu_post": []
+}
